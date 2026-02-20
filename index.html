@@ -356,6 +356,7 @@ let studentConns = [];
 let buzzes = [];
 let hasBuzzed = false;
 let logos = [], currentIdx = -1;
+  let buzzLocked = false;
 const PREFIX = 'qbuzz-';
 
 // Reliable PeerJS config with multiple STUN servers
@@ -388,13 +389,16 @@ function esc(s) {
 
 // ══ BECOME HOST ══
 function becomeHost() {
+  if (peer) {
+  try { peer.destroy(); } catch(e){}
+}
   const name = getName(); if (!name) return;
   myName = name; isHost = true;
   const roomCode = Math.random().toString(36).slice(2,7).toUpperCase();
   const peerId = PREFIX + roomCode;
   setStatus('Starting host…', 'connecting');
 
-  peer = new Peer(peerId, PEER_CONFIG);
+peer = new Peer(peerId, PEER_CONFIG);
 
   peer.on('open', () => {
     document.getElementById('room-id-display').textContent = roomCode;
@@ -489,21 +493,50 @@ function prevLogo() { if (logos.length){ currentIdx=(currentIdx-1+logos.length)%
 
 // ══ BUZZES ══
 function handleBuzz(data, conn) {
-  if (!conn.playerName) conn.playerName = data.name;
-  buzzes.push({ name: data.name, time: data.time });
-  buzzes.sort((a,b) => a.time - b.time);
-  renderBuzzQueue(); renderPlayerList();
+
+  if (buzzLocked) return;
+
+  if (!conn.playerName)
+    conn.playerName = data.name;
+
+  buzzLocked = true;
+
+  buzzes.push({
+    name: data.name,
+    time: data.time
+  });
+
+  buzzes.sort((a,b)=>a.time-b.time);
+
+  renderBuzzQueue();
+  renderPlayerList();
+
   const winner = buzzes[0];
-  broadcast({ type:'result', winner: winner.name, rank: buzzes.map(b=>b.name) });
-  document.getElementById('winner-area').innerHTML = `
-    <div class="winner-banner">
-      <div class="crown">👑</div>
-      <div class="wname">${esc(winner.name)}</div>
-      <div style="font-size:0.8rem;color:var(--muted)">First to buzz!</div>
-    </div>`;
+
+  broadcast({
+    type:'result',
+    winner: winner.name,
+    rank: buzzes.map(b=>b.name)
+  });
+
+  document.getElementById('winner-area').innerHTML =
+  `
+  <div class="winner-banner">
+
+  <div class="crown">👑</div>
+
+  <div class="wname">${winner.name}</div>
+
+  <div style="font-size:0.8rem;color:var(--muted)">
+  First to buzz!
+  </div>
+
+  </div>
+  `;
 }
 
 function resetBuzzers() {
+  buzzLocked = false;
   buzzes = [];
   document.getElementById('winner-area').innerHTML = '';
   renderBuzzQueue(); renderPlayerList();
@@ -560,7 +593,7 @@ function joinAsStudent() {
     alert('Could not connect!\n\n• Make sure the Room ID is correct\n• Make sure the host is online\n• Try again — sometimes the server takes a moment\n\nTip: Both you and the host must be on the same network OR have internet access.');
   }, 10000);
 
-  peer = new Peer(PEER_CONFIG);
+ peer = new Peer(undefined, PEER_CONFIG);
 
   peer.on('open', () => {
     myConn = peer.connect(PREFIX + code, { reliable: true, serialization: 'json' });
@@ -625,6 +658,7 @@ function onStudentData(data) {
     document.getElementById('result-card').className = 'result-card';
   }
   if (data.type === 'result') {
+    document.getElementById('buzz-btn').disabled = true;
     const rank = data.rank.indexOf(myName) + 1;
     const won  = data.winner === myName;
     const rc = document.getElementById('result-card');
@@ -683,3 +717,4 @@ document.addEventListener('keydown', e => {
 </script>
 </body>
 </html>
+
