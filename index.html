@@ -1,15 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Quiz Buzzer</title>
+<title>Quiz Buzzer Pro</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
 
 <style>
 
@@ -18,25 +16,54 @@ background:#0d0d0d;
 color:white;
 font-family:Nunito;
 text-align:center;
-padding-top:40px;
 }
 
-.btn{
+.title{
+
+font-family:Bebas Neue;
+font-size:60px;
+color:red;
+
+}
+
+.card{
+
+background:#222;
+padding:30px;
+border-radius:15px;
+display:inline-block;
+
+}
+
+input{
+
+padding:12px;
+font-size:18px;
+
+}
+
+button{
+
 padding:15px 30px;
 font-size:20px;
 margin:10px;
 cursor:pointer;
+
 }
 
-input{
-padding:10px;
-font-size:18px;
+#buzzBtn{
+
+background:red;
+color:white;
+
 }
 
 #winner{
+
 font-size:40px;
 color:gold;
 margin-top:20px;
+
 }
 
 </style>
@@ -46,29 +73,37 @@ margin-top:20px;
 <body>
 
 
-<h1>QUIZ BUZZER</h1>
+<div class="title">BUZZ!</div>
 
 
-<div id="joinScreen">
+<div id="setup">
+
+<div class="card">
 
 <input id="name" placeholder="Enter Name">
 
-<br><br>
+<br>
 
-<button class="btn" onclick="join()">JOIN</button>
+<button onclick="join()">JOIN</button>
+
+<button onclick="host()">HOST</button>
+
+</div>
 
 </div>
 
 
-<div id="buzzScreen" style="display:none">
 
-<button class="btn" id="buzzBtn" onclick="buzz()">BUZZ</button>
+<div id="game" style="display:none">
 
-<button class="btn" onclick="reset()">RESET</button>
+<button id="buzzBtn" onclick="buzz()">BUZZ</button>
+
+<button onclick="reset()">RESET</button>
 
 <div id="winner"></div>
 
 </div>
+
 
 
 <script>
@@ -83,8 +118,10 @@ const supabase = window.supabase.createClient(
 );
 
 
+
 let myName="";
-let buzzLocked=false;
+let isHost=false;
+let locked=false;
 
 
 
@@ -100,38 +137,59 @@ return;
 
 }
 
-document.getElementById("joinScreen").style.display="none";
-document.getElementById("buzzScreen").style.display="block";
+start();
 
 }
 
 
 
-// BUZZ
+function host(){
+
+myName="HOST";
+
+isHost=true;
+
+start();
+
+}
+
+
+
+function start(){
+
+document.getElementById("setup").style.display="none";
+
+document.getElementById("game").style.display="block";
+
+listen();
+
+}
+
+
+
 async function buzz(){
 
-if(buzzLocked) return;
+if(locked)return;
 
-buzzLocked=true;
+locked=true;
 
 document.getElementById("buzzBtn").disabled=true;
 
 
-// check if already someone buzzed
 
-const { data } = await supabase
+const {data}=await supabase
+
 .from("buzzers")
+
 .select("*")
+
 .limit(1);
 
 
-if(data.length>0){
 
-return;
-}
+if(data.length>0)return;
 
 
-// insert winner
 
 await supabase
 
@@ -149,14 +207,22 @@ time:new Date()
 
 
 
-// RESET
 async function reset(){
 
-buzzLocked=false;
+if(!isHost){
+
+alert("Only host can reset");
+
+return;
+
+}
+
+locked=false;
+
+document.getElementById("winner").innerHTML="";
 
 document.getElementById("buzzBtn").disabled=false;
 
-document.getElementById("winner").innerHTML="";
 
 
 await supabase
@@ -171,11 +237,11 @@ await supabase
 
 
 
-// REALTIME LISTENER
+function listen(){
 
 supabase
 
-.channel("buzzers")
+.channel("buzz")
 
 .on(
 
@@ -193,19 +259,21 @@ table:"buzzers"
 
 payload=>{
 
-buzzLocked=true;
+locked=true;
 
 document.getElementById("buzzBtn").disabled=true;
 
 document.getElementById("winner").innerHTML=
 
-"🏆 "+payload.new.name+" buzzed first";
+"🏆 "+payload.new.name+" BUZZED FIRST";
 
 }
 
 )
 
 .subscribe();
+
+}
 
 
 
