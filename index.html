@@ -1,269 +1,560 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quiz Buzzer</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
-
-body{
-background:black;
-color:white;
-text-align:center;
-font-family:Arial;
+:root{
+  --bg:#0a0a0a;--surface:#161616;--card:#1c1c1c;--border:#2a2a2a;
+  --accent:#ff2d2d;--gold:#ffd700;--green:#22c55e;--blue:#3b82f6;
+  --text:#f0f0f0;--muted:#666;
 }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center}
 
-button{
-font-size:20px;
-padding:10px 20px;
-margin:10px;
-}
+/* ── SETUP ── */
+#setup-screen{width:100%;max-width:440px;padding:36px 18px;
+  display:flex;flex-direction:column;align-items:center;gap:16px}
+.app-title{font-family:'Bebas Neue',sans-serif;font-size:4.5rem;color:var(--accent);
+  text-shadow:0 0 50px rgba(255,45,45,.4);line-height:1;letter-spacing:.06em}
+.app-sub{color:var(--muted);font-size:.85rem;margin-top:-10px;text-align:center}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%}
+.label{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.1em;margin-bottom:9px}
+inp{display:block}
+input[type="text"]{width:100%;padding:11px 14px;background:var(--surface);
+  border:1px solid var(--border);border-radius:9px;color:var(--text);
+  font-family:'Nunito',sans-serif;font-size:1rem;outline:none;
+  transition:border-color .2s;margin-bottom:10px}
+input[type="text"]:focus{border-color:var(--accent)}
+input::placeholder{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  padding:12px 20px;border:none;border-radius:10px;
+  font-family:'Nunito',sans-serif;font-size:1rem;font-weight:700;
+  cursor:pointer;transition:all .15s;width:100%}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn-host{background:var(--gold);color:#000}
+.btn-host:hover:not(:disabled){box-shadow:0 0 28px rgba(255,215,0,.4)}
+.btn-join{background:var(--blue);color:#fff}
+.btn-join:hover:not(:disabled){box-shadow:0 0 28px rgba(59,130,246,.45)}
+.btn-buzz{background:var(--accent);color:#fff;font-family:'Bebas Neue',sans-serif;
+  font-size:2.8rem;letter-spacing:.1em;border-radius:20px;padding:36px 0;
+  box-shadow:0 0 50px rgba(255,45,45,.35);width:100%;max-width:360px}
+.btn-buzz:hover:not(:disabled){box-shadow:0 0 80px rgba(255,45,45,.65);transform:scale(1.04)}
+.btn-buzz:disabled{background:#2a2a2a;box-shadow:none;color:#444}
+.btn-sec{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.btn-sec:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:8px 15px;font-size:.84rem;width:auto}
+.divider{display:flex;align-items:center;gap:10px;color:var(--muted);
+  font-size:.76rem;margin:6px 0}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--muted);margin-right:5px;vertical-align:middle;transition:background .3s}
+.dot.ok{background:var(--green);box-shadow:0 0 7px var(--green)}
+.dot.spin{background:orange;animation:bl 1s infinite}
+.dot.err{background:var(--accent)}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.25}}
 
-#buzzBtn{
-font-size:40px;
-background:red;
-color:white;
-}
+/* ── APP ── */
+#app-screen{display:none;width:100%;max-width:940px;padding:0 14px 60px}
 
-#winner{
-font-size:40px;
-color:gold;
-}
+/* HOST */
+#host-view{display:none}
+.topbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:10px;padding:16px 0;border-bottom:1px solid var(--border);margin-bottom:18px}
+.host-title{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--gold)}
+.room-badge{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:6px 14px;font-size:.84rem;color:var(--muted);cursor:pointer;
+  transition:border-color .2s}
+.room-badge:hover{border-color:var(--gold)}
+.room-badge span{color:var(--gold);font-weight:900;font-size:1.08rem}
+.hgrid{display:grid;grid-template-columns:1fr 290px;gap:16px}
+@media(max-width:640px){.hgrid{grid-template-columns:1fr}}
+.logo-stage{background:var(--card);border:1px solid var(--border);border-radius:16px;
+  min-height:240px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:24px}
+.logo-stage img{max-width:230px;max-height:170px;object-fit:contain}
+.logo-lbl{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:var(--gold);margin-top:9px}
+.logo-ph{color:var(--muted);font-size:.86rem;text-align:center}
+.ctrl{background:var(--card);border:1px solid var(--border);border-radius:13px;
+  padding:14px;margin-top:12px}
+input[type="file"]{color:var(--muted);font-size:.82rem;width:100%}
+.nav-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.lcount{font-size:.74rem;color:var(--muted);margin-top:7px}
+.winner-banner{background:linear-gradient(135deg,#1c1400,#2a1e00);
+  border:2px solid var(--gold);border-radius:14px;padding:14px 22px;
+  text-align:center;margin-bottom:14px;animation:pop .3s ease}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.wname{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--gold)}
+.side{display:flex;flex-direction:column;gap:12px}
+.pbox{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px}
+.qi{display:flex;align-items:center;gap:9px;padding:7px 0;
+  border-bottom:1px solid var(--border);font-size:.86rem}
+.qi:last-child{border-bottom:none}
+.qr{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--muted);width:24px}
+.qr.r1{color:var(--gold)}
+.pi{display:flex;align-items:center;justify-content:space-between;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:8px 11px;font-size:.86rem;margin-bottom:5px}
+.pi.bz{border-color:var(--accent);background:rgba(255,45,45,.07)}
+.pi.wn{border-color:var(--gold);background:rgba(255,215,0,.07)}
+.ptag{font-family:'Bebas Neue',sans-serif;color:var(--muted);font-size:.95rem}
+.ptag.g{color:var(--gold)}
+.pscroll{max-height:180px;overflow-y:auto}
 
+/* STUDENT */
+#student-view{display:none;padding-top:18px}
+.stopbar{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:22px;flex-wrap:wrap;gap:10px}
+.shandle{font-family:'Bebas Neue',sans-serif;font-size:1.7rem}
+.logo-stu{background:var(--card);border:1px solid var(--border);border-radius:18px;
+  display:flex;align-items:center;justify-content:center;min-height:230px;
+  padding:28px;margin-bottom:24px;position:relative;overflow:hidden}
+.logo-stu img{max-width:260px;max-height:180px;object-fit:contain;transition:opacity .3s}
+.buzz-area{display:flex;flex-direction:column;align-items:center;gap:12px}
+.bstatus{font-size:.96rem;font-weight:600;color:var(--muted);min-height:24px}
+.bstatus.ok{color:var(--accent)}
+.bstatus.won{color:var(--gold)}
+.rcard{background:var(--card);border:1px solid var(--border);border-radius:13px;
+  padding:18px 26px;text-align:center;display:none;animation:pop .3s ease;
+  width:100%;max-width:340px}
+.rcard.show{display:block}
+.irow{display:flex;gap:8px}
+.irow input{margin-bottom:0;flex:1}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 </style>
-
 </head>
-
 <body>
 
+<!-- SETUP -->
+<div id="setup-screen">
+  <div class="app-title">BUZZ!</div>
+  <div class="app-sub">Real-time Quiz Buzzer · No signup needed</div>
 
-<h1>QUIZ BUZZER</h1>
-
-
-<div id="start">
-
-<input id="name" placeholder="Enter name">
-
-<br>
-
-<button onclick="join()">JOIN</button>
-
-<button onclick="host()">HOST</button>
-
+  <div class="card">
+    <div class="label">Your Name</div>
+    <input type="text" id="player-name" placeholder="Enter your name…" maxlength="20"/>
+    <button class="btn btn-host" onclick="becomeHost()">🎙️ Become Host</button>
+    <br><br>
+    <div class="divider">OR JOIN A ROOM</div><br>
+    <div class="label">Room ID</div>
+    <div class="irow">
+      <input type="text" id="room-input" placeholder="e.g. AB12C"
+        maxlength="6" oninput="this.value=this.value.toUpperCase()"/>
+      <button class="btn btn-join btn-sm" onclick="joinRoom()">Join →</button>
+    </div>
+    <div style="margin-top:10px;font-size:.8rem;color:var(--muted)">
+      <span class="dot" id="conn-dot"></span>
+      <span id="conn-status">Not connected</span>
+    </div>
+  </div>
 </div>
 
+<!-- APP -->
+<div id="app-screen">
 
+  <!-- HOST -->
+  <div id="host-view">
+    <div class="topbar">
+      <div class="host-title">🎙️ HOST</div>
+      <div class="room-badge" onclick="copyRoomId()" title="Click to copy">
+        Room: <span id="room-display">—</span> 📋
+      </div>
+      <div style="font-size:.8rem;color:var(--muted)">
+        <span class="dot ok"></span><span id="sc">0</span> students
+      </div>
+    </div>
 
-<div id="game" style="display:none">
+    <div id="winner-area"></div>
 
+    <div class="hgrid">
+      <div>
+        <div class="logo-stage">
+          <img id="himg" src="" alt="" style="display:none"/>
+          <div class="logo-ph" id="hph">Upload logo images below<br><small style="font-size:.75rem;color:#444">supports JPG, PNG, SVG</small></div>
+          <div class="logo-lbl" id="hlbl"></div>
+        </div>
+        <div class="ctrl">
+          <div class="label">📁 Load Logos</div>
+          <input type="file" id="logo-upload" multiple accept="image/*" onchange="loadLogos()"/>
+          <div class="nav-row">
+            <button class="btn btn-sec btn-sm" onclick="prevLogo()">← Prev</button>
+            <button class="btn btn-sec btn-sm" onclick="nextLogo()">Next →</button>
+            <button class="btn btn-sec btn-sm" onclick="resetBuzz()">🔄 Reset</button>
+          </div>
+          <div class="lcount" id="lcount">No logos loaded</div>
+        </div>
+      </div>
+      <div class="side">
+        <div class="pbox">
+          <div class="label" style="margin-bottom:7px">🏆 Buzz Queue</div>
+          <div id="bqueue"><div style="color:var(--muted);font-size:.83rem;padding:6px 0">No buzzes yet</div></div>
+        </div>
+        <div class="pbox">
+          <div class="label" style="margin-bottom:7px">👥 Players (<span id="pcnt">0</span>)</div>
+          <div class="pscroll" id="plist"><div style="color:var(--muted);font-size:.83rem;padding:6px 0">Waiting…</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-<input type="file" id="logoUpload">
-
-<br><br>
-
-<img id="logo" width="300">
-
-<br><br>
-
-<button id="buzzBtn" onclick="buzz()">BUZZ</button>
-
-<br>
-
-<button onclick="next()">NEXT</button>
-
-<div id="winner"></div>
-
+  <!-- STUDENT -->
+  <div id="student-view">
+    <div class="stopbar">
+      <div class="shandle" id="shandle">—</div>
+      <div style="font-size:.8rem;color:var(--muted)"><span class="dot ok"></span>Connected</div>
+    </div>
+    <div class="logo-stu">
+      <img id="simg" src="" alt="" style="display:none"/>
+      <div id="sph" style="color:var(--muted)">Waiting for host to show a logo…</div>
+    </div>
+    <div class="buzz-area">
+      <button class="btn btn-buzz" id="buzz-btn" onclick="doBuzz()" disabled>BUZZ!</button>
+      <div class="bstatus" id="bstatus">Waiting for host…</div>
+      <div class="rcard" id="rcard"><div id="rcontent"></div></div>
+    </div>
+  </div>
 </div>
-
-
 
 <script>
+// ══════════════════════════════════════════════
+//  CONFIG — using HiveMQ public MQTT broker
+//  (free, no signup, works on all networks)
+// ══════════════════════════════════════════════
+const BROKER = 'wss://broker.hivemq.com:8884/mqtt';
 
+let client = null;
+let myName = '', isHost = false, roomCode = '';
+let logos = [], curIdx = -1;
+let hasBuzzed = false;
+let players = {};   // { id: name }
+let buzzes  = [];   // [{ name, ts }] sorted
+let myId = Math.random().toString(36).slice(2,10);
 
-const supabase = window.supabase.createClient(
+// MQTT topics for this room
+const T = (room) => ({
+  state:   `quizbuzz/${room}/state`,    // host → all: full state (logo + buzzes + players)
+  buzz:    `quizbuzz/${room}/buzz`,     // student → host: buzz event
+  join:    `quizbuzz/${room}/join`,     // student → host: join event
+  leave:   `quizbuzz/${room}/leave`,    // student → host: leave event
+  cmd:     `quizbuzz/${room}/cmd`,      // host → all: reset / next logo commands
+});
 
-"https://snayhpmkgnuwyfgzmbpi.supabase.co",
+// ══════════════════════════════════════════════
+//  CONNECT TO BROKER
+// ══════════════════════════════════════════════
+function connect(onReady) {
+  setStatus('Connecting…', 'spin');
 
-"sb_publishable_TVaiPvD2tRCGMXvfWBhKAg_7CXdSRL4"
+  client = mqtt.connect(BROKER, {
+    clientId: 'qb_' + myId,
+    clean: true,
+    reconnectPeriod: 3000,
+    connectTimeout: 10000,
+  });
 
-);
+  client.on('connect', () => {
+    setStatus('Connected', 'ok');
+    onReady();
+  });
 
+  client.on('error', err => {
+    setStatus('Error: ' + err.message, 'err');
+  });
 
-
-let myName="";
-let isHost=false;
-let locked=false;
-
-
-
-function join(){
-
-myName=document.getElementById("name").value;
-
-if(!myName){
-
-alert("Enter name");
-
-return;
-
+  client.on('offline', () => setStatus('Reconnecting…', 'spin'));
+  client.on('reconnect', () => setStatus('Reconnecting…', 'spin'));
 }
 
-document.getElementById("start").style.display="none";
-
-document.getElementById("game").style.display="block";
-
-listen();
-
+function pub(topic, data) {
+  if (!client || !client.connected) return;
+  client.publish(topic, JSON.stringify(data), { qos: 1 });
 }
 
-
-
-function host(){
-
-myName="HOST";
-
-isHost=true;
-
-document.getElementById("start").style.display="none";
-
-document.getElementById("game").style.display="block";
-
-listen();
-
+function sub(topic, cb) {
+  client.subscribe(topic, { qos: 1 });
+  client.on('message', (t, payload) => {
+    if (t === topic) {
+      try { cb(JSON.parse(payload.toString())); } catch(e){}
+    }
+  });
 }
 
+// ══════════════════════════════════════════════
+//  HOST
+// ══════════════════════════════════════════════
+function becomeHost() {
+  const n = getName(); if (!n) return;
+  myName = n; isHost = true;
+  roomCode = Math.random().toString(36).slice(2,7).toUpperCase();
 
+  connect(() => {
+    const t = T(roomCode);
+    document.getElementById('room-display').textContent = roomCode;
+    showApp('host');
 
-document.getElementById("logoUpload").onchange=function(e){
+    // Listen for students joining
+    sub(t.join, data => {
+      players[data.id] = data.name;
+      updateCounts();
+      // Send current state to new student
+      pushState();
+    });
 
-if(!isHost)return;
+    // Listen for students leaving
+    sub(t.leave, data => {
+      delete players[data.id];
+      updateCounts();
+    });
 
-const reader=new FileReader();
-
-reader.onload= async function(){
-
-await supabase
-
-.from("state")
-
-.update({
-
-logo:reader.result,
-winner:""
-
-})
-
-.eq("id",1);
-
-};
-
-reader.readAsDataURL(e.target.files[0]);
-
-};
-
-
-
-async function buzz(){
-
-if(locked)return;
-
-locked=true;
-
-await supabase
-
-.from("state")
-
-.update({
-
-winner:myName
-
-})
-
-.eq("id",1);
-
+    // Listen for buzzes
+    sub(t.buzz, data => {
+      // Avoid duplicates
+      if (buzzes.find(b => b.id === data.id)) return;
+      buzzes.push(data);
+      buzzes.sort((a,b) => a.ts - b.ts);
+      pushState();
+      if (buzzes.length === 1) showWinnerBanner(buzzes[0].name);
+    });
+  });
 }
 
-
-
-async function next(){
-
-if(!isHost)return;
-
-locked=false;
-
-await supabase
-
-.from("state")
-
-.update({
-
-winner:""
-
-})
-
-.eq("id",1);
-
+function pushState() {
+  // Host broadcasts full state to all students
+  pub(T(roomCode).state, {
+    logo: curIdx >= 0 ? { name: logos[curIdx].name, dataUrl: logos[curIdx].dataUrl } : null,
+    buzzes: buzzes,
+    players: players,
+  });
+  renderBuzzQueue();
+  renderPlayerList();
+  updateCounts();
 }
 
-
-
-function listen(){
-
-supabase
-
-.channel("state")
-
-.on(
-
-"postgres_changes",
-
-{
-
-event:"UPDATE",
-schema:"public",
-table:"state"
-
-},
-
-payload=>{
-
-
-document.getElementById("logo").src=payload.new.logo;
-
-
-if(payload.new.winner){
-
-locked=true;
-
-document.getElementById("winner").innerHTML=
-
-"🏆 "+payload.new.winner;
-
-}
-else{
-
-locked=false;
-
-document.getElementById("winner").innerHTML="";
-
+function showWinnerBanner(name) {
+  document.getElementById('winner-area').innerHTML = `
+    <div class="winner-banner">
+      <div style="font-size:2rem">👑</div>
+      <div class="wname">${esc(name)}</div>
+      <div style="font-size:.76rem;color:var(--muted);margin-top:2px">First to buzz!</div>
+    </div>`;
 }
 
+function renderBuzzQueue() {
+  const el = document.getElementById('bqueue');
+  if (!buzzes.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.83rem;padding:6px 0">No buzzes yet</div>';
+    return;
+  }
+  el.innerHTML = buzzes.map((b,i) => `
+    <div class="qi">
+      <span class="qr ${i===0?'r1':''}">${i===0?'🥇':(i+1)+'. '}</span>
+      <span style="font-weight:700">${esc(b.name)}</span>
+    </div>`).join('');
 }
 
-)
-
-.subscribe();
-
+function renderPlayerList() {
+  const el = document.getElementById('plist');
+  const names = Object.values(players);
+  if (!names.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.83rem;padding:6px 0">Waiting for students…</div>';
+    return;
+  }
+  el.innerHTML = names.map(n => {
+    const rank = buzzes.findIndex(b => b.name === n);
+    return `<div class="pi ${rank===0?'wn':rank>0?'bz':''}">
+      <span>${esc(n)}</span>
+      <span class="ptag ${rank===0?'g':''}">${rank===0?'🥇':rank>0?'#'+(rank+1):''}</span>
+    </div>`;
+  }).join('');
 }
 
+function updateCounts() {
+  const n = Object.keys(players).length;
+  document.getElementById('sc').textContent = n;
+  document.getElementById('pcnt').textContent = n;
+}
 
+function resetBuzz() {
+  buzzes = [];
+  document.getElementById('winner-area').innerHTML = '';
+  pushState();
+  pub(T(roomCode).cmd, { type: 'reset' });
+}
 
+function copyRoomId() {
+  navigator.clipboard.writeText(roomCode).then(() => {
+    const el = document.getElementById('room-display');
+    const old = el.parentElement.innerHTML;
+    el.parentElement.innerHTML = 'Copied! ✅';
+    setTimeout(() => { el.parentElement.innerHTML = old; }, 1500);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  LOGOS
+// ══════════════════════════════════════════════
+function loadLogos() {
+  const files = document.getElementById('logo-upload').files;
+  logos = []; curIdx = -1;
+  let done = 0;
+  Array.from(files).forEach(f => {
+    const r = new FileReader();
+    r.onload = e => {
+      logos.push({ name: f.name.replace(/\.[^.]+$/,''), dataUrl: e.target.result });
+      if (++done === files.length) {
+        logos.sort((a,b) => a.name.localeCompare(b.name));
+        curIdx = 0; showLogo();
+      }
+    };
+    r.readAsDataURL(f);
+  });
+}
+
+function showLogo() {
+  if (!logos.length || curIdx < 0) return;
+  const l = logos[curIdx];
+  document.getElementById('himg').src = l.dataUrl;
+  document.getElementById('himg').style.display = 'block';
+  document.getElementById('hph').style.display = 'none';
+  document.getElementById('hlbl').textContent = l.name;
+  document.getElementById('lcount').textContent = `${curIdx+1}/${logos.length}: ${l.name}`;
+  buzzes = [];
+  document.getElementById('winner-area').innerHTML = '';
+  pushState();
+}
+
+function nextLogo(){ if(logos.length){ curIdx=(curIdx+1)%logos.length; showLogo(); } }
+function prevLogo(){ if(logos.length){ curIdx=(curIdx-1+logos.length)%logos.length; showLogo(); } }
+
+// ══════════════════════════════════════════════
+//  STUDENT JOIN
+// ══════════════════════════════════════════════
+function joinRoom() {
+  const n = getName(); if (!n) return;
+  const code = document.getElementById('room-input').value.trim().toUpperCase();
+  if (!code) { alert('Room ID daalo!'); return; }
+  myName = n; isHost = false; roomCode = code;
+
+  connect(() => {
+    const t = T(roomCode);
+
+    // Announce join
+    pub(t.join, { id: myId, name: myName });
+
+    // Announce leave on page close
+    window.addEventListener('beforeunload', () => {
+      pub(t.leave, { id: myId });
+    });
+
+    // Listen for state from host
+    sub(t.state, onState);
+
+    // Listen for commands
+    sub(t.cmd, data => {
+      if (data.type === 'reset') {
+        hasBuzzed = false;
+        document.getElementById('buzz-btn').disabled = false;
+        document.getElementById('bstatus').textContent = 'Ready — buzz kar jab pata ho!';
+        document.getElementById('bstatus').className = 'bstatus';
+        document.getElementById('rcard').className = 'rcard';
+      }
+    });
+
+    document.getElementById('shandle').textContent = myName;
+    showApp('student');
+    setStatus('Connected', 'ok');
+  });
+}
+
+function onState(state) {
+  // Update logo
+  if (state.logo) {
+    document.getElementById('simg').src = state.logo.dataUrl;
+    document.getElementById('simg').style.display = 'block';
+    document.getElementById('sph').style.display = 'none';
+  }
+
+  // Reset buzz UI if no buzzes in state (means host reset)
+  if (!state.buzzes || state.buzzes.length === 0) {
+    hasBuzzed = false;
+    document.getElementById('buzz-btn').disabled = false;
+    document.getElementById('bstatus').textContent = 'Ready — buzz kar jab pata ho!';
+    document.getElementById('bstatus').className = 'bstatus';
+    document.getElementById('rcard').className = 'rcard';
+    return;
+  }
+
+  // Show result
+  const bz = state.buzzes;
+  const winner = bz[0];
+  const myRank = bz.findIndex(b => b.id === myId);
+  const rc = document.getElementById('rcard');
+  const rcont = document.getElementById('rcontent');
+
+  if (winner.id === myId) {
+    rcont.innerHTML = `<div style="font-size:2.2rem">🥇</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--gold)">YOU GOT IT FIRST!</div>`;
+    document.getElementById('bstatus').className = 'bstatus won';
+    document.getElementById('bstatus').textContent = '🏆 Sabse pehle tune buzzed kiya!';
+  } else if (myRank >= 0) {
+    rcont.innerHTML = `<div style="font-size:1.4rem;font-weight:900">Rank #${myRank+1}</div>
+      <div style="color:var(--muted);font-size:.86rem;margin-top:5px">Winner: <strong>${esc(winner.name)}</strong></div>`;
+    document.getElementById('bstatus').className = 'bstatus ok';
+    document.getElementById('bstatus').textContent = `Tu #${myRank+1} tha`;
+  } else {
+    rcont.innerHTML = `<div style="color:var(--muted);font-size:.9rem">Winner: <strong>${esc(winner.name)}</strong></div>`;
+  }
+  rc.className = 'rcard show';
+}
+
+// ══════════════════════════════════════════════
+//  BUZZ
+// ══════════════════════════════════════════════
+function doBuzz() {
+  if (hasBuzzed) return;
+  hasBuzzed = true;
+  document.getElementById('buzz-btn').disabled = true;
+  document.getElementById('bstatus').textContent = '⚡ Buzzed!';
+  document.getElementById('bstatus').className = 'bstatus ok';
+  pub(T(roomCode).buzz, { id: myId, name: myName, ts: Date.now() });
+}
+
+// ══════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════
+function getName() {
+  const n = document.getElementById('player-name').value.trim();
+  if (!n) { alert('Pehle apna naam daalo!'); return null; }
+  return n;
+}
+function setStatus(msg, cls='') {
+  document.getElementById('conn-status').textContent = msg;
+  document.getElementById('conn-dot').className = 'dot'+(cls?' '+cls:'');
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function showApp(role) {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  document.getElementById('host-view').style.display = role==='host'?'block':'none';
+  document.getElementById('student-view').style.display = role==='student'?'block':'none';
+}
+
+// Spacebar to buzz
+document.addEventListener('keydown', e => {
+  if (e.code==='Space' && !isHost) {
+    e.preventDefault();
+    const b = document.getElementById('buzz-btn');
+    if (!b.disabled) doBuzz();
+  }
+});
 </script>
-
-
 </body>
 </html>
-
-
