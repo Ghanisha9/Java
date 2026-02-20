@@ -4,11 +4,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Quiz Buzzer</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
 
 <style>
 
@@ -17,21 +18,34 @@ background:#0d0d0d;
 color:white;
 font-family:Nunito;
 text-align:center;
-padding-top:40px;
 }
 
-.btn-buzz{
+.title{
+font-family:Bebas Neue;
+font-size:60px;
+color:red;
+}
+
+button{
+padding:15px 30px;
+font-size:20px;
+margin:10px;
+cursor:pointer;
+}
+
+#buzzBtn{
+font-size:50px;
 background:red;
 color:white;
-font-size:40px;
-padding:30px;
-border:none;
-cursor:pointer;
 }
 
 #winner{
 font-size:40px;
 color:gold;
+}
+
+img{
+max-width:300px;
 margin-top:20px;
 }
 
@@ -42,27 +56,48 @@ margin-top:20px;
 <body>
 
 
-<h1>QUIZ BUZZER</h1>
+<div class="title">BUZZ!</div>
 
 
-<input id="name" placeholder="Enter Name">
+<input id="name" placeholder="Enter name">
 
-<br><br>
+
+<br>
 
 <button onclick="join()">JOIN</button>
+
+<button onclick="beHost()">HOST</button>
 
 
 <div id="game" style="display:none">
 
-<br>
-
-<button class="btn-buzz" onclick="buzz()" id="buzzBtn">BUZZ</button>
 
 <br>
 
-<button onclick="reset()">RESET</button>
+
+<input type="file" id="logoUpload">
+
+
+<br>
+
+
+<img id="logo">
+
+
+<br>
+
+
+<button id="buzzBtn" onclick="buzz()">BUZZ</button>
+
+
+<br>
+
+
+<button onclick="reset()">NEXT</button>
+
 
 <div id="winner"></div>
+
 
 </div>
 
@@ -82,7 +117,7 @@ const supabase = window.supabase.createClient(
 
 
 let myName="";
-
+let isHost=false;
 let locked=false;
 
 
@@ -91,17 +126,67 @@ function join(){
 
 myName=document.getElementById("name").value;
 
-if(!myName){
-
-alert("Enter name");
-
-return;
+start();
 
 }
+
+
+
+function beHost(){
+
+myName="HOST";
+
+isHost=true;
+
+start();
+
+}
+
+
+
+function start(){
 
 document.getElementById("game").style.display="block";
 
+listen();
+
 }
+
+
+
+document.getElementById("logoUpload").onchange= async function(e){
+
+if(!isHost)return;
+
+
+const file=e.target.files[0];
+
+
+const reader=new FileReader();
+
+
+reader.onload= async function(){
+
+await supabase
+
+.from("state")
+
+.upsert({
+
+id:1,
+
+logo:reader.result,
+
+winner:""
+
+});
+
+};
+
+
+reader.readAsDataURL(file);
+
+};
 
 
 
@@ -109,22 +194,21 @@ async function buzz(){
 
 if(locked)return;
 
-locked=true;
 
-document.getElementById("buzzBtn").disabled=true;
+locked=true;
 
 
 await supabase
 
-.from("buzzers")
+.from("state")
 
-.insert({
+.update({
 
-name:myName,
+winner:myName
 
-time:new Date()
+})
 
-});
+.eq("id",1);
 
 }
 
@@ -132,29 +216,34 @@ time:new Date()
 
 async function reset(){
 
+if(!isHost)return;
+
+
 locked=false;
-
-document.getElementById("buzzBtn").disabled=false;
-
-document.getElementById("winner").innerHTML="";
 
 
 await supabase
 
-.from("buzzers")
+.from("state")
 
-.delete()
+.update({
 
-.neq("id",0);
+winner:""
+
+})
+
+.eq("id",1);
 
 }
 
 
 
+function listen(){
+
 
 supabase
 
-.channel("buzzers")
+.channel("state")
 
 .on(
 
@@ -162,23 +251,45 @@ supabase
 
 {
 
-event:"INSERT",
+event:"UPDATE",
 
 schema:"public",
 
-table:"buzzers"
+table:"state"
 
 },
 
 payload=>{
 
+
+document.getElementById("logo").src=
+
+payload.new.logo;
+
+
+
+if(payload.new.winner){
+
+
 locked=true;
 
-document.getElementById("buzzBtn").disabled=true;
 
 document.getElementById("winner").innerHTML=
 
-"🏆 "+payload.new_ATTACHMENT.new.name+" BUZZED FIRST";
+"🏆 "+payload.new.winner;
+
+
+}else{
+
+
+locked=false;
+
+
+document.getElementById("winner").innerHTML="";
+
+
+}
+
 
 }
 
@@ -186,6 +297,8 @@ document.getElementById("winner").innerHTML=
 
 .subscribe();
 
+
+}
 
 
 </script>
