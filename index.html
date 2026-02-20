@@ -1,20 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Quiz Buzzer</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script>
-
-const supabase = window.supabase.createClient(
-"https://snayhpmkgnuwyfgzmbpi.supabase.co",
-"sb_publishable_TVaiPvD2tRCGMXvfWBhKAg_7CXdSRL4"
-);
-
-</script>
 
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
 
@@ -25,16 +18,25 @@ background:#0d0d0d;
 color:white;
 font-family:Nunito;
 text-align:center;
-padding:40px;
+padding-top:40px;
 }
 
-button{
-
+.btn{
 padding:15px 30px;
 font-size:20px;
+margin:10px;
 cursor:pointer;
-margin-top:20px;
+}
 
+input{
+padding:10px;
+font-size:18px;
+}
+
+#winner{
+font-size:40px;
+color:gold;
+margin-top:20px;
 }
 
 </style>
@@ -43,52 +45,112 @@ margin-top:20px;
 
 <body>
 
+
 <h1>QUIZ BUZZER</h1>
 
-<input id="name" placeholder="Enter name">
 
-<br>
+<div id="joinScreen">
 
-<button onclick="becomeHost()">Become Host</button>
-
-<button onclick="join()">Join</button>
+<input id="name" placeholder="Enter Name">
 
 <br><br>
 
-<button onclick="buzz()" id="buzzBtn">BUZZ</button>
+<button class="btn" onclick="join()">JOIN</button>
 
-<h2 id="result"></h2>
+</div>
+
+
+<div id="buzzScreen" style="display:none">
+
+<button class="btn" onclick="buzz()">BUZZ</button>
+
+<button class="btn" onclick="reset()">RESET</button>
+
+<div id="winner"></div>
+
+</div>
+
 
 <script>
 
+
+const supabase = window.supabase.createClient(
+
+"https://snayhpmkgnuwyfgzmbpi.supabase.co",
+
+"sb_publishable_TVaiPvD2tRCGMXvfWBhKAg_7CXdSRL4"
+
+);
+
+
 let myName="";
-let isHost=false;
-let buzzLocked=false;
 
-function becomeHost(){
+let buzzed=false;
 
-myName=document.getElementById("name").value;
-
-isHost=true;
-
-listenBuzz();
-
-alert("You are host now");
-
-}
 
 
 function join(){
 
 myName=document.getElementById("name").value;
 
-alert("You joined");
+if(!myName){
+
+alert("Enter name");
+
+return;
+
+}
+
+document.getElementById("joinScreen").style.display="none";
+
+document.getElementById("buzzScreen").style.display="block";
 
 }
 
 
 
-function listenBuzz(){
+async function buzz(){
+
+if(buzzed)return;
+
+buzzed=true;
+
+
+await supabase
+
+.from("buzzers")
+
+.insert({
+
+name:myName,
+
+time:new Date()
+
+});
+
+}
+
+
+
+async function reset(){
+
+buzzed=false;
+
+
+await supabase
+
+.from("buzzers")
+
+.delete()
+
+.neq("id",0);
+
+
+document.getElementById("winner").innerHTML="";
+
+}
+
+
 
 supabase
 
@@ -108,15 +170,13 @@ table:"buzzers"
 
 },
 
-(payload)=>{
+payload=>{
 
-if(buzzLocked)return;
+document.getElementById("winner").innerHTML=
 
-buzzLocked=true;
+"🏆 "+payload.new.name+" buzzed first";
 
-document.getElementById("result").innerText=
-
-payload.new.name+" buzzed first";
+buzzed=true;
 
 }
 
@@ -124,29 +184,9 @@ payload.new.name+" buzzed first";
 
 .subscribe();
 
-}
-
-
-
-async function buzz(){
-
-await supabase
-
-.from("buzzers")
-
-.insert({
-
-name:myName,
-
-time:new Date()
-
-});
-
-}
-
-
 
 </script>
+
 
 </body>
 
