@@ -62,7 +62,7 @@ margin-top:20px;
 
 <div id="buzzScreen" style="display:none">
 
-<button class="btn" onclick="buzz()">BUZZ</button>
+<button class="btn" id="buzzBtn" onclick="buzz()">BUZZ</button>
 
 <button class="btn" onclick="reset()">RESET</button>
 
@@ -84,8 +84,7 @@ const supabase = window.supabase.createClient(
 
 
 let myName="";
-
-let buzzed=false;
+let buzzLocked=false;
 
 
 
@@ -102,19 +101,37 @@ return;
 }
 
 document.getElementById("joinScreen").style.display="none";
-
 document.getElementById("buzzScreen").style.display="block";
 
 }
 
 
 
+// BUZZ
 async function buzz(){
 
-if(buzzed)return;
+if(buzzLocked) return;
 
-buzzed=true;
+buzzLocked=true;
 
+document.getElementById("buzzBtn").disabled=true;
+
+
+// check if already someone buzzed
+
+const { data } = await supabase
+.from("buzzers")
+.select("*")
+.limit(1);
+
+
+if(data.length>0){
+
+return;
+}
+
+
+// insert winner
 
 await supabase
 
@@ -132,9 +149,14 @@ time:new Date()
 
 
 
+// RESET
 async function reset(){
 
-buzzed=false;
+buzzLocked=false;
+
+document.getElementById("buzzBtn").disabled=false;
+
+document.getElementById("winner").innerHTML="";
 
 
 await supabase
@@ -145,12 +167,11 @@ await supabase
 
 .neq("id",0);
 
-
-document.getElementById("winner").innerHTML="";
-
 }
 
 
+
+// REALTIME LISTENER
 
 supabase
 
@@ -172,17 +193,20 @@ table:"buzzers"
 
 payload=>{
 
+buzzLocked=true;
+
+document.getElementById("buzzBtn").disabled=true;
+
 document.getElementById("winner").innerHTML=
 
 "🏆 "+payload.new.name+" buzzed first";
-
-buzzed=true;
 
 }
 
 )
 
 .subscribe();
+
 
 
 </script>
