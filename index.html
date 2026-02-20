@@ -1,8 +1,7 @@
+```html
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quiz Buzzer</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16,11 +15,16 @@ text-align:center;
 font-family:Arial;
 }
 
+button{
+font-size:20px;
+padding:10px 20px;
+margin:10px;
+}
+
 #buzzBtn{
-font-size:50px;
+font-size:40px;
 background:red;
 color:white;
-padding:20px;
 }
 
 #winner{
@@ -34,19 +38,26 @@ color:gold;
 
 <body>
 
-<h1>Quiz Buzzer</h1>
+
+<h1>QUIZ BUZZER</h1>
+
+
+<div id="start">
 
 <input id="name" placeholder="Enter name">
 
-<br><br>
+<br>
 
 <button onclick="join()">JOIN</button>
 
 <button onclick="host()">HOST</button>
 
+</div>
+
+
+
 <div id="game" style="display:none">
 
-<br>
 
 <input type="file" id="logoUpload">
 
@@ -58,7 +69,7 @@ color:gold;
 
 <button id="buzzBtn" onclick="buzz()">BUZZ</button>
 
-<br><br>
+<br>
 
 <button onclick="next()">NEXT</button>
 
@@ -67,26 +78,47 @@ color:gold;
 </div>
 
 
+
 <script>
 
+
 const supabase = window.supabase.createClient(
+
 "https://snayhpmkgnuwyfgzmbpi.supabase.co",
+
 "sb_publishable_TVaiPvD2tRCGMXvfWBhKAg_7CXdSRL4"
+
 );
+
+
 
 let myName="";
 let isHost=false;
 let locked=false;
 
+
+
 function join(){
 
 myName=document.getElementById("name").value;
+
+if(!myName){
+
+alert("Enter name");
+
+return;
+
+}
+
+document.getElementById("start").style.display="none";
 
 document.getElementById("game").style.display="block";
 
 listen();
 
 }
+
+
 
 function host(){
 
@@ -94,11 +126,15 @@ myName="HOST";
 
 isHost=true;
 
+document.getElementById("start").style.display="none";
+
 document.getElementById("game").style.display="block";
 
 listen();
 
 }
+
+
 
 document.getElementById("logoUpload").onchange=function(e){
 
@@ -106,14 +142,20 @@ if(!isHost)return;
 
 const reader=new FileReader();
 
-reader.onload=async function(){
+reader.onload= async function(){
 
-await supabase.from("state").update({
+await supabase
+
+.from("state")
+
+.update({
 
 logo:reader.result,
 winner:""
 
-}).eq("id",1);
+})
+
+.eq("id",1);
 
 };
 
@@ -122,19 +164,27 @@ reader.readAsDataURL(e.target.files[0]);
 };
 
 
+
 async function buzz(){
 
 if(locked)return;
 
 locked=true;
 
-await supabase.from("state").update({
+await supabase
+
+.from("state")
+
+.update({
 
 winner:myName
 
-}).eq("id",1);
+})
+
+.eq("id",1);
 
 }
+
 
 
 async function next(){
@@ -143,20 +193,33 @@ if(!isHost)return;
 
 locked=false;
 
-await supabase.from("state").update({
+await supabase
+
+.from("state")
+
+.update({
 
 winner:""
 
-}).eq("id",1);
+})
+
+.eq("id",1);
 
 }
 
 
+
 function listen(){
 
-supabase.channel("state")
+supabase
 
-.on("postgres_changes",{
+.channel("state")
+
+.on(
+
+"postgres_changes",
+
+{
 
 event:"UPDATE",
 schema:"public",
@@ -166,15 +229,20 @@ table:"state"
 
 payload=>{
 
+
 document.getElementById("logo").src=payload.new.logo;
+
 
 if(payload.new.winner){
 
 locked=true;
 
-document.getElementById("winner").innerHTML="Winner: "+payload.new.winner;
+document.getElementById("winner").innerHTML=
 
-}else{
+"🏆 "+payload.new.winner;
+
+}
+else{
 
 locked=false;
 
@@ -182,13 +250,19 @@ document.getElementById("winner").innerHTML="";
 
 }
 
-})
+}
+
+)
 
 .subscribe();
 
 }
 
+
+
 </script>
+
 
 </body>
 </html>
+```
