@@ -364,13 +364,7 @@ const PREFIX = 'qbuzz-';
  
 const PEER_CONFIG = {
 
-  host: "0.peerjs.com",
-
-  port: 443,
-
-  secure: true,
-
-  path: "/",
+  debug: 2,
 
   config: {
 
@@ -380,9 +374,21 @@ const PEER_CONFIG = {
 
       { urls: "stun:stun1.l.google.com:19302" },
 
+      { urls: "stun:stun2.l.google.com:19302" },
+
       {
 
         urls: "turn:openrelay.metered.ca:80",
+
+        username: "openrelayproject",
+
+        credential: "openrelayproject"
+
+      },
+
+      {
+
+        urls: "turn:openrelay.metered.ca:443",
 
         username: "openrelayproject",
 
@@ -740,5 +746,6 @@ document.addEventListener('keydown', e => {
 </script>
 </body>
 </html>
+
 
 
