@@ -1,13 +1,14 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quiz Buzzer Pro</title>
+<title>Quiz Buzzer</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
 
 <style>
 
@@ -16,54 +17,22 @@ background:#0d0d0d;
 color:white;
 font-family:Nunito;
 text-align:center;
+padding-top:40px;
 }
 
-.title{
-
-font-family:Bebas Neue;
-font-size:60px;
-color:red;
-
-}
-
-.card{
-
-background:#222;
-padding:30px;
-border-radius:15px;
-display:inline-block;
-
-}
-
-input{
-
-padding:12px;
-font-size:18px;
-
-}
-
-button{
-
-padding:15px 30px;
-font-size:20px;
-margin:10px;
-cursor:pointer;
-
-}
-
-#buzzBtn{
-
+.btn-buzz{
 background:red;
 color:white;
-
+font-size:40px;
+padding:30px;
+border:none;
+cursor:pointer;
 }
 
 #winner{
-
 font-size:40px;
 color:gold;
 margin-top:20px;
-
 }
 
 </style>
@@ -73,30 +42,23 @@ margin-top:20px;
 <body>
 
 
-<div class="title">BUZZ!</div>
+<h1>QUIZ BUZZER</h1>
 
-
-<div id="setup">
-
-<div class="card">
 
 <input id="name" placeholder="Enter Name">
 
-<br>
+<br><br>
 
 <button onclick="join()">JOIN</button>
-
-<button onclick="host()">HOST</button>
-
-</div>
-
-</div>
-
 
 
 <div id="game" style="display:none">
 
-<button id="buzzBtn" onclick="buzz()">BUZZ</button>
+<br>
+
+<button class="btn-buzz" onclick="buzz()" id="buzzBtn">BUZZ</button>
+
+<br>
 
 <button onclick="reset()">RESET</button>
 
@@ -120,7 +82,7 @@ const supabase = window.supabase.createClient(
 
 
 let myName="";
-let isHost=false;
+
 let locked=false;
 
 
@@ -137,31 +99,7 @@ return;
 
 }
 
-start();
-
-}
-
-
-
-function host(){
-
-myName="HOST";
-
-isHost=true;
-
-start();
-
-}
-
-
-
-function start(){
-
-document.getElementById("setup").style.display="none";
-
 document.getElementById("game").style.display="block";
-
-listen();
 
 }
 
@@ -174,21 +112,6 @@ if(locked)return;
 locked=true;
 
 document.getElementById("buzzBtn").disabled=true;
-
-
-
-const {data}=await supabase
-
-.from("buzzers")
-
-.select("*")
-
-.limit(1);
-
-
-
-if(data.length>0)return;
-
 
 
 await supabase
@@ -209,20 +132,11 @@ time:new Date()
 
 async function reset(){
 
-if(!isHost){
-
-alert("Only host can reset");
-
-return;
-
-}
-
 locked=false;
-
-document.getElementById("winner").innerHTML="";
 
 document.getElementById("buzzBtn").disabled=false;
 
+document.getElementById("winner").innerHTML="";
 
 
 await supabase
@@ -237,11 +151,10 @@ await supabase
 
 
 
-function listen(){
 
 supabase
 
-.channel("buzz")
+.channel("buzzers")
 
 .on(
 
@@ -265,15 +178,13 @@ document.getElementById("buzzBtn").disabled=true;
 
 document.getElementById("winner").innerHTML=
 
-"🏆 "+payload.new.name+" BUZZED FIRST";
+"🏆 "+payload.new_ATTACHMENT.new.name+" BUZZED FIRST";
 
 }
 
 )
 
 .subscribe();
-
-}
 
 
 
@@ -283,3 +194,4 @@ document.getElementById("winner").innerHTML=
 </body>
 
 </html>
+```
