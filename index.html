@@ -360,17 +360,40 @@ let logos = [], currentIdx = -1;
 const PREFIX = 'qbuzz-';
 
 // Reliable PeerJS config with multiple STUN servers
+
+ 
 const PEER_CONFIG = {
+
+  host: "0.peerjs.com",
+
+  port: 443,
+
+  secure: true,
+
+  path: "/",
+
   config: {
+
     iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun.cloudflare.com:3478' },
-      { urls: 'stun:global.stun.twilio.com:3478' }
+
+      { urls: "stun:stun.l.google.com:19302" },
+
+      { urls: "stun:stun1.l.google.com:19302" },
+
+      {
+
+        urls: "turn:openrelay.metered.ca:80",
+
+        username: "openrelayproject",
+
+        credential: "openrelayproject"
+
+      }
+
     ]
-  },
-  debug: 0
+
+  }
+
 };
 
 // ══ HELPERS ══
@@ -717,4 +740,5 @@ document.addEventListener('keydown', e => {
 </script>
 </body>
 </html>
+
 
