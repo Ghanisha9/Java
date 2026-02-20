@@ -1,52 +1,31 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Quiz Buzzer</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
-
 <style>
 
 body{
-background:#0d0d0d;
+background:black;
 color:white;
-font-family:Nunito;
 text-align:center;
-}
-
-.title{
-font-family:Bebas Neue;
-font-size:60px;
-color:red;
-}
-
-button{
-padding:15px 30px;
-font-size:20px;
-margin:10px;
-cursor:pointer;
+font-family:Arial;
 }
 
 #buzzBtn{
 font-size:50px;
 background:red;
 color:white;
+padding:20px;
 }
 
 #winner{
 font-size:40px;
 color:gold;
-}
-
-img{
-max-width:300px;
-margin-top:20px;
 }
 
 </style>
@@ -55,96 +34,53 @@ margin-top:20px;
 
 <body>
 
-
-<div class="title">BUZZ!</div>
-
+<h1>Quiz Buzzer</h1>
 
 <input id="name" placeholder="Enter name">
 
-
-<br>
+<br><br>
 
 <button onclick="join()">JOIN</button>
 
-<button onclick="beHost()">HOST</button>
-
+<button onclick="host()">HOST</button>
 
 <div id="game" style="display:none">
 
-
 <br>
-
 
 <input type="file" id="logoUpload">
 
+<br><br>
 
-<br>
+<img id="logo" width="300">
 
-
-<img id="logo">
-
-
-<br>
-
+<br><br>
 
 <button id="buzzBtn" onclick="buzz()">BUZZ</button>
 
+<br><br>
 
-<br>
-
-
-<button onclick="reset()">NEXT</button>
-
+<button onclick="next()">NEXT</button>
 
 <div id="winner"></div>
-
 
 </div>
 
 
-
 <script>
 
-
 const supabase = window.supabase.createClient(
-
 "https://snayhpmkgnuwyfgzmbpi.supabase.co",
-
 "sb_publishable_TVaiPvD2tRCGMXvfWBhKAg_7CXdSRL4"
-
 );
-
-
 
 let myName="";
 let isHost=false;
 let locked=false;
 
-
-
 function join(){
 
 myName=document.getElementById("name").value;
-
-start();
-
-}
-
-
-
-function beHost(){
-
-myName="HOST";
-
-isHost=true;
-
-start();
-
-}
-
-
-
-function start(){
 
 document.getElementById("game").style.display="block";
 
@@ -152,159 +88,107 @@ listen();
 
 }
 
+function host(){
 
+myName="HOST";
 
-document.getElementById("logoUpload").onchange= async function(e){
+isHost=true;
+
+document.getElementById("game").style.display="block";
+
+listen();
+
+}
+
+document.getElementById("logoUpload").onchange=function(e){
 
 if(!isHost)return;
 
-
-const file=e.target.files[0];
-
-
 const reader=new FileReader();
 
+reader.onload=async function(){
 
-reader.onload= async function(){
-
-await supabase
-
-.from("state")
-
-.upsert({
-
-id:1,
+await supabase.from("state").update({
 
 logo:reader.result,
-
 winner:""
 
-});
+}).eq("id",1);
 
 };
 
-
-reader.readAsDataURL(file);
+reader.readAsDataURL(e.target.files[0]);
 
 };
-
 
 
 async function buzz(){
 
 if(locked)return;
 
-
 locked=true;
 
-
-await supabase
-
-.from("state")
-
-.update({
+await supabase.from("state").update({
 
 winner:myName
 
-})
-
-.eq("id",1);
+}).eq("id",1);
 
 }
 
 
-
-async function reset(){
+async function next(){
 
 if(!isHost)return;
 
-
 locked=false;
 
-
-await supabase
-
-.from("state")
-
-.update({
+await supabase.from("state").update({
 
 winner:""
 
-})
-
-.eq("id",1);
+}).eq("id",1);
 
 }
-
 
 
 function listen(){
 
+supabase.channel("state")
 
-supabase
-
-.channel("state")
-
-.on(
-
-"postgres_changes",
-
-{
+.on("postgres_changes",{
 
 event:"UPDATE",
-
 schema:"public",
-
 table:"state"
 
 },
 
 payload=>{
 
-
-document.getElementById("logo").src=
-
-payload.new.logo;
-
-
+document.getElementById("logo").src=payload.new.logo;
 
 if(payload.new.winner){
 
-
 locked=true;
 
-
-document.getElementById("winner").innerHTML=
-
-"🏆 "+payload.new.winner;
-
+document.getElementById("winner").innerHTML="Winner: "+payload.new.winner;
 
 }else{
 
-
 locked=false;
-
 
 document.getElementById("winner").innerHTML="";
 
-
 }
 
-
-}
-
-)
+})
 
 .subscribe();
 
-
 }
-
 
 </script>
 
-
 </body>
-
 </html>
-```
