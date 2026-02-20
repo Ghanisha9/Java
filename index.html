@@ -4,748 +4,150 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quiz Buzzer</title>
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #0d0d0d;
-  --surface: #1a1a1a;
-  --card: #222;
-  --border: #333;
-  --accent: #ff3c3c;
-  --gold: #ffd700;
-  --green: #22c55e;
-  --blue: #3b82f6;
-  --text: #f5f5f5;
-  --muted: #777;
-}
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'Nunito', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
 
-/* SETUP */
-#setup-screen {
-  width: 100%;
-  max-width: 460px;
-  padding: 40px 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
-.app-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 4rem;
-  color: var(--accent);
-  text-shadow: 0 0 40px rgba(255,60,60,0.4);
-  line-height: 1;
-  letter-spacing: 0.08em;
-}
-.app-sub { color: var(--muted); font-size: 0.9rem; margin-top: -12px; }
-
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px;
-  width: 100%;
-}
-.card-title {
-  font-size: 0.75rem; font-weight: 700; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px;
-}
-input[type="text"] {
-  width: 100%;
-  padding: 12px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--text);
-  font-family: 'Nunito', sans-serif;
-  font-size: 1rem;
-  outline: none;
-  transition: border-color .2s;
-  margin-bottom: 12px;
-}
-input[type="text"]:focus { border-color: var(--accent); }
-input::placeholder { color: var(--muted); }
-
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 13px 24px; border: none; border-radius: 10px;
-  font-family: 'Nunito', sans-serif; font-size: 1rem; font-weight: 700;
-  cursor: pointer; transition: all .18s; width: 100%;
-}
-.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
-.btn:active:not(:disabled) { transform: scale(0.97); }
-.btn-host  { background: var(--gold); color: #000; }
-.btn-host:hover:not(:disabled)  { box-shadow: 0 0 24px rgba(255,215,0,0.35); }
-.btn-join  { background: var(--blue); color: #fff; }
-.btn-join:hover:not(:disabled)  { box-shadow: 0 0 24px rgba(59,130,246,0.4); }
-.btn-buzz  {
-  background: var(--accent); color: #fff;
-  font-family: 'Bebas Neue', sans-serif; font-size: 2.4rem; letter-spacing: 0.12em;
-  border-radius: 18px; padding: 32px;
-  box-shadow: 0 0 40px rgba(255,60,60,0.3);
-  width: 100%; max-width: 360px;
-}
-.btn-buzz:hover:not(:disabled) { box-shadow: 0 0 70px rgba(255,60,60,0.6); transform: scale(1.03); }
-.btn-buzz:disabled { background: #3a3a3a; box-shadow: none; color: #666; }
-.btn-sec { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
-.btn-sec:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.btn-sm { padding: 10px 18px; font-size: 0.85rem; width: auto; }
-
-.divider {
-  display: flex; align-items: center; gap: 10px;
-  color: var(--muted); font-size: 0.8rem;
-  margin: 4px 0;
-}
-.divider::before, .divider::after { content:''; flex:1; height:1px; background:var(--border); }
-
-.status-dot {
-  display: inline-block; width: 9px; height: 9px; border-radius: 50%;
-  background: var(--muted); margin-right: 6px; vertical-align: middle;
-  transition: background .3s;
-}
-.status-dot.connected { background: var(--green); box-shadow: 0 0 8px var(--green); }
-.status-dot.connecting { background: orange; animation: blink 1s infinite; }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-/* APP */
-#app-screen { display: none; width: 100%; max-width: 920px; padding: 0 16px 60px; }
-
-/* HOST */
-#host-view { display: none; }
-.host-topbar {
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
-  padding: 20px 0 18px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 22px;
-}
-.host-title { font-family:'Bebas Neue',sans-serif; font-size:1.9rem; color:var(--gold); }
-.room-badge {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px; padding: 7px 16px; font-size: 0.85rem; color: var(--muted);
-}
-.room-badge span { color: var(--gold); font-weight: 900; font-size: 1.1rem; }
-
-.host-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
-@media(max-width:680px){ .host-grid{ grid-template-columns:1fr; } }
-
-.logo-stage-host {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 16px; min-height: 260px;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 28px; position: relative; overflow: hidden;
-}
-.logo-stage-host img { max-width: 250px; max-height: 190px; object-fit: contain; }
-.logo-name-label { font-family:'Bebas Neue',sans-serif; font-size:1.3rem; color:var(--gold); margin-top:10px; }
-.logo-placeholder { color: var(--muted); font-size: 0.9rem; }
-
-.controls-box {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 14px; padding: 16px; margin-top: 14px;
-}
-.controls-box .card-title { margin-bottom: 10px; }
-input[type="file"] { color: var(--muted); font-size: 0.85rem; width: 100%; }
-.nav-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-.logo-count-lbl { font-size: 0.78rem; color: var(--muted); margin-top: 8px; }
-
-/* WINNER BANNER */
-.winner-banner {
-  background: linear-gradient(135deg,#1a1500,#2a2100);
-  border: 2px solid var(--gold);
-  border-radius: 16px; padding: 18px 28px; text-align: center;
-  margin-bottom: 16px; animation: pop .3s ease;
-}
-@keyframes pop { from{transform:scale(0.88);opacity:0} to{transform:scale(1);opacity:1} }
-.winner-banner .crown { font-size: 2.2rem; }
-.winner-banner .wname { font-family:'Bebas Neue',sans-serif; font-size:2.2rem; color:var(--gold); }
-
-/* SIDE PANELS */
-.side-panels { display: flex; flex-direction: column; gap: 14px; }
-.panel-box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
-
-.queue-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 0; border-bottom: 1px solid var(--border);
-  font-size: 0.88rem;
-}
-.queue-item:last-child { border-bottom: none; }
-.queue-rank { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; color:var(--muted); width:28px; }
-.queue-rank.r1 { color: var(--gold); }
-
-.player-item {
-  display: flex; align-items: center; justify-content: space-between;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px; padding: 9px 13px;
-  font-size: 0.88rem; margin-bottom: 6px; transition: border-color .2s;
-}
-.player-item.buzzed { border-color: var(--accent); background: rgba(255,60,60,0.07); }
-.player-item.winner { border-color: var(--gold); background: rgba(255,215,0,0.07); }
-.player-rank-tag { font-family:'Bebas Neue',sans-serif; color:var(--muted); }
-.player-rank-tag.gold { color: var(--gold); }
-
-.player-list-scroll { max-height: 200px; overflow-y: auto; }
-
-/* STUDENT */
-#student-view { display: none; padding-top: 22px; }
-.student-topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 26px; flex-wrap: wrap; gap: 10px;
-}
-.student-handle { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; }
-
-.logo-stage-student {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 20px; display: flex; align-items: center; justify-content: center;
-  min-height: 250px; padding: 32px; margin-bottom: 28px;
-  position: relative; overflow: hidden;
-}
-.logo-stage-student::before {
-  content:''; position:absolute; inset:0;
-  background: radial-gradient(circle at 50%50%,rgba(255,60,60,0.04),transparent 70%);
-}
-.logo-stage-student img { max-width:280px; max-height:200px; object-fit:contain; transition: opacity .3s; }
-
-.buzz-area { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.buzz-status { font-size:1rem; font-weight:600; color:var(--muted); min-height:26px; transition:color .3s; }
-.buzz-status.ok   { color: var(--accent); }
-.buzz-status.won  { color: var(--gold); }
-
-.result-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 14px; padding: 20px 32px; text-align: center;
-  display: none; animation: pop .3s ease; width: 100%; max-width: 360px;
-}
-.result-card.show { display: block; }
-
-/* Host-id row */
-.id-row { display: flex; gap: 8px; }
-.id-row input { margin-bottom: 0; flex: 1; }
-
-/* scrollbar */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-</style>
-</head>
-<body>
-
-<!-- ═══ SETUP ═══ -->
-<div id="setup-screen">
-  <div class="app-title">BUZZ!</div>
-  <div class="app-sub">Real-time Multi-player Quiz Buzzer</div>
-
-  <div class="card">
-    <div class="card-title">Your Name</div>
-    <input type="text" id="player-name" placeholder="Enter your name…" maxlength="20" />
-
-    <button class="btn btn-host" onclick="becomeHost()">🎙️ Become Host</button>
-    <br><br>
-    <div class="divider">OR JOIN A ROOM</div><br>
-
-    <div class="card-title">Room ID</div>
-    <div class="id-row">
-      <input type="text" id="room-id-input" placeholder="Ask host for Room ID" maxlength="10" />
-      <button class="btn btn-join btn-sm" onclick="joinAsStudent()">Join →</button>
-    </div>
-    <div style="margin-top:10px; font-size:0.82rem; color:var(--muted)">
-      <span class="status-dot" id="conn-dot"></span>
-      <span id="conn-status">Not connected</span>
-    </div>
-    <div style="margin-top:8px; font-size:0.78rem; color:#555; line-height:1.5">
-      💡 First connection can take 5–10 seconds. If it fails, try again once — PeerJS servers can be slow.
-    </div>
-  </div>
-</div>
-
-<!-- ═══ APP ═══ -->
-<div id="app-screen">
-
-  <!-- HOST VIEW -->
-  <div id="host-view">
-    <div class="host-topbar">
-      <div class="host-title">🎙️ HOST PANEL</div>
-      <div class="room-badge">Room: <span id="room-id-display">—</span></div>
-      <div style="font-size:0.82rem;color:var(--muted)">
-        <span class="status-dot connected"></span>
-        <span id="student-count">0</span> students connected
-      </div>
-    </div>
-
-    <div id="winner-area"></div>
-
-    <div class="host-grid">
-      <!-- LEFT -->
-      <div>
-        <div class="logo-stage-host">
-          <img id="host-logo-img" src="" alt="" style="display:none" />
-          <div class="logo-placeholder" id="host-ph">Upload logos below to begin</div>
-          <div class="logo-name-label" id="host-logo-name"></div>
-        </div>
-
-        <div class="controls-box">
-          <div class="card-title">📁 Load Logo Images</div>
-          <input type="file" id="logo-upload" multiple accept="image/*" onchange="loadLogos()" />
-          <div class="nav-row">
-            <button class="btn btn-sec btn-sm" onclick="prevLogo()">← Prev</button>
-            <button class="btn btn-sec btn-sm" onclick="nextLogo()">Next →</button>
-            <button class="btn btn-sec btn-sm" onclick="resetBuzzers()">🔄 Reset Buzz</button>
-          </div>
-          <div class="logo-count-lbl" id="logo-count-lbl">No logos loaded</div>
-        </div>
-      </div>
-
-      <!-- RIGHT -->
-      <div class="side-panels">
-        <div class="panel-box">
-          <div class="card-title">🏆 Buzz Queue</div>
-          <div id="buzz-queue">
-            <div style="color:var(--muted);font-size:0.85rem;padding:10px 0">No buzzes yet</div>
-          </div>
-        </div>
-        <div class="panel-box">
-          <div class="card-title">👥 Players (<span id="player-count-lbl">0</span>)</div>
-          <div class="player-list-scroll" id="player-list">
-            <div style="color:var(--muted);font-size:0.85rem;padding:10px 0">Waiting for students…</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- STUDENT VIEW -->
-  <div id="student-view">
-    <div class="student-topbar">
-      <div class="student-handle" id="student-handle">—</div>
-      <div style="font-size:0.82rem;color:var(--muted)">
-        <span class="status-dot connected"></span>Connected to host
-      </div>
-    </div>
-
-    <div class="logo-stage-student">
-      <img id="student-logo-img" src="" alt="" style="display:none" />
-      <div id="student-ph" style="color:var(--muted)">Waiting for host to show a logo…</div>
-    </div>
-
-    <div class="buzz-area">
-      <button class="btn btn-buzz" id="buzz-btn" onclick="buzz()" disabled>BUZZ!</button>
-      <div class="buzz-status" id="buzz-status">Waiting for host…</div>
-      <div class="result-card" id="result-card">
-        <div id="result-content"></div>
-      </div>
-    </div>
-  </div>
-
-</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-// ══ STATE ══
-let peer = null, isHost = false, myName = '';
-let myConn = null;
-let studentConns = [];
-let buzzes = [];
-let hasBuzzed = false;
-let logos = [], currentIdx = -1;
-  let buzzLocked = false;
-const PREFIX = 'qbuzz-';
 
-// Reliable PeerJS config with multiple STUN servers
+const supabase = window.supabase.createClient(
+"https://snayhpmkgnuwyfgzmbpi.supabase.co",
+"sb_publishable_TVaiPvD2tRCGMXvfWBhKAg_7CXdSRL4"
+);
 
- 
-const PEER_CONFIG = {
-
-  debug: 2,
-
-  config: {
-
-    iceServers: [
-
-      { urls: "stun:stun.l.google.com:19302" },
-
-      { urls: "stun:stun1.l.google.com:19302" },
-
-      { urls: "stun:stun2.l.google.com:19302" },
-
-      {
-
-        urls: "turn:openrelay.metered.ca:80",
-
-        username: "openrelayproject",
-
-        credential: "openrelayproject"
-
-      },
-
-      {
-
-        urls: "turn:openrelay.metered.ca:443",
-
-        username: "openrelayproject",
-
-        credential: "openrelayproject"
-
-      }
-
-    ]
-
-  }
-
-};
-
-// ══ HELPERS ══
-function getName() {
-  const n = document.getElementById('player-name').value.trim();
-  if (!n) { alert('Please enter your name!'); return null; }
-  return n;
-}
-function setStatus(msg, cls='') {
-  document.getElementById('conn-status').textContent = msg;
-  document.getElementById('conn-dot').className = 'status-dot' + (cls ? ' '+cls : '');
-}
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ══ BECOME HOST ══
-function becomeHost() {
-  if (peer) {
-  try { peer.destroy(); } catch(e){}
-}
-  const name = getName(); if (!name) return;
-  myName = name; isHost = true;
-  const roomCode = Math.random().toString(36).slice(2,7).toUpperCase();
-  const peerId = PREFIX + roomCode;
-  setStatus('Starting host…', 'connecting');
-
-peer = new Peer(peerId, PEER_CONFIG);
-
-  peer.on('open', () => {
-    document.getElementById('room-id-display').textContent = roomCode;
-    setStatus('Ready', 'connected');
-    showApp('host');
-  });
-
-  peer.on('connection', (conn) => {
-    conn.playerName = null;
-    studentConns.push(conn);
-    updateCounts();
-
-    conn.on('open', () => {
-      // Send current state to new joiner
-      if (currentIdx >= 0) conn.send({ type:'logo', data: logos[currentIdx] });
-      conn.send({ type:'buzzstate', locked: hasBuzzed });
-    });
-
-    conn.on('data', (data) => {
-      if (data.type === 'hello') {
-        conn.playerName = data.name;
-        renderPlayerList();
-        updateCounts();
-      }
-      if (data.type === 'buzz') handleBuzz(data, conn);
-    });
-
-    conn.on('close', () => {
-      studentConns = studentConns.filter(c => c !== conn);
-      updateCounts(); renderPlayerList();
-    });
-    conn.on('error', () => {
-      studentConns = studentConns.filter(c => c !== conn);
-      updateCounts();
-    });
-  });
-
-  peer.on('error', err => {
-    setStatus('Error', '');
-    if (err.type === 'unavailable-id') {
-      alert('Room ID conflict — refreshing to get a new one…');
-      becomeHost(); // retry with new random ID
-    } else {
-      alert('Host error (' + err.type + '): ' + err.message);
-    }
-  });
-}
-
-function broadcast(data) {
-  studentConns.forEach(c => { try { c.send(data); } catch(e){} });
-}
-function updateCounts() {
-  const n = studentConns.length;
-  document.getElementById('student-count').textContent = n;
-  document.getElementById('player-count-lbl').textContent = n;
-}
-
-// ══ LOGOS ══
-function loadLogos() {
-  const files = document.getElementById('logo-upload').files;
-  logos = []; currentIdx = -1;
-  let done = 0;
-  Array.from(files).forEach(f => {
-    const r = new FileReader();
-    r.onload = e => {
-      logos.push({ name: f.name.replace(/\.[^.]+$/,''), dataUrl: e.target.result });
-      if (++done === files.length) {
-        logos.sort((a,b) => a.name.localeCompare(b.name));
-        currentIdx = 0;
-        showCurrentLogo();
-      }
-    };
-    r.readAsDataURL(f);
-  });
-}
-
-function showCurrentLogo() {
-  if (!logos.length || currentIdx < 0) return;
-  const logo = logos[currentIdx];
-  const img = document.getElementById('host-logo-img');
-  img.src = logo.dataUrl; img.style.display = 'block';
-  document.getElementById('host-ph').style.display = 'none';
-  document.getElementById('host-logo-name').textContent = logo.name;
-  document.getElementById('logo-count-lbl').textContent =
-    `Showing ${currentIdx+1} of ${logos.length}: ${logo.name}`;
-  broadcast({ type:'logo', data: logo });
-  resetBuzzers();
-}
-
-function nextLogo() { if (logos.length){ currentIdx=(currentIdx+1)%logos.length; showCurrentLogo(); } }
-function prevLogo() { if (logos.length){ currentIdx=(currentIdx-1+logos.length)%logos.length; showCurrentLogo(); } }
-
-// ══ BUZZES ══
-function handleBuzz(data, conn) {
-
-  if (buzzLocked) return;
-
-  if (!conn.playerName)
-    conn.playerName = data.name;
-
-  buzzLocked = true;
-
-  buzzes.push({
-    name: data.name,
-    time: data.time
-  });
-
-  buzzes.sort((a,b)=>a.time-b.time);
-
-  renderBuzzQueue();
-  renderPlayerList();
-
-  const winner = buzzes[0];
-
-  broadcast({
-    type:'result',
-    winner: winner.name,
-    rank: buzzes.map(b=>b.name)
-  });
-
-  document.getElementById('winner-area').innerHTML =
-  `
-  <div class="winner-banner">
-
-  <div class="crown">👑</div>
-
-  <div class="wname">${winner.name}</div>
-
-  <div style="font-size:0.8rem;color:var(--muted)">
-  First to buzz!
-  </div>
-
-  </div>
-  `;
-}
-
-function resetBuzzers() {
-  buzzLocked = false;
-  buzzes = [];
-  document.getElementById('winner-area').innerHTML = '';
-  renderBuzzQueue(); renderPlayerList();
-  broadcast({ type:'reset' });
-}
-
-function renderBuzzQueue() {
-  const el = document.getElementById('buzz-queue');
-  if (!buzzes.length) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:10px 0">No buzzes yet</div>';
-    return;
-  }
-  el.innerHTML = buzzes.map((b,i) => `
-    <div class="queue-item">
-      <span class="queue-rank ${i===0?'r1':''}">${i===0?'🥇':i+1+'.'}</span>
-      <span style="font-weight:700">${esc(b.name)}</span>
-    </div>`).join('');
-}
-
-function renderPlayerList() {
-  const el = document.getElementById('player-list');
-  const players = studentConns.filter(c=>c.playerName);
-  if (!players.length) {
-    el.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:10px 0">Waiting for students…</div>';
-    return;
-  }
-  el.innerHTML = players.map(c => {
-    const rank = buzzes.findIndex(b=>b.name===c.playerName);
-    const cls = rank===0?'winner':rank>0?'buzzed':'';
-    const tag = rank===0?'🥇':rank>0?`#${rank+1}`:'';
-    return `<div class="player-item ${cls}">
-      <span>${esc(c.playerName)}</span>
-      <span class="player-rank-tag ${rank===0?'gold':''}">${tag}</span>
-    </div>`;
-  }).join('');
-}
-
-// ══ JOIN AS STUDENT ══
-function joinAsStudent() {
-  const name = getName(); if (!name) return;
-  const code = document.getElementById('room-id-input').value.trim().toUpperCase();
-  if (!code) { alert('Enter the Room ID from your host!'); return; }
-  myName = name; isHost = false;
-
-  // Destroy any old peer first
-  if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
-
-  setStatus('Connecting… (up to 10s)', 'connecting');
-
-  // Hard timeout — if not connected in 10s, show clear error
-  const joinTimeout = setTimeout(() => {
-    if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
-    setStatus('Timed out — try again', '');
-    alert('Could not connect!\n\n• Make sure the Room ID is correct\n• Make sure the host is online\n• Try again — sometimes the server takes a moment\n\nTip: Both you and the host must be on the same network OR have internet access.');
-  }, 10000);
-
- peer = new Peer(undefined, PEER_CONFIG);
-
-  peer.on('open', () => {
-    myConn = peer.connect(PREFIX + code, { reliable: true, serialization: 'json' });
-
-    // Timeout specifically for the host connection step
-    const connTimeout = setTimeout(() => {
-      if (myConn && !myConn.open) {
-        clearTimeout(joinTimeout);
-        setStatus('Room not reachable', '');
-        alert('Found the server but couldn\'t reach the host.\n\n• Double-check the Room ID\n• Make sure the host\'s page is still open');
-      }
-    }, 7000);
-
-    myConn.on('open', () => {
-      clearTimeout(joinTimeout);
-      clearTimeout(connTimeout);
-      setStatus('Connected!', 'connected');
-      myConn.send({ type:'hello', name: myName });
-      document.getElementById('student-handle').textContent = myName;
-      showApp('student');
-    });
-
-    myConn.on('data', onStudentData);
-
-    myConn.on('close', () => {
-      document.getElementById('buzz-status').textContent = 'Disconnected from host';
-      document.getElementById('buzz-btn').disabled = true;
-    });
-
-    myConn.on('error', e => {
-      clearTimeout(joinTimeout);
-      setStatus('Connection error', '');
-      alert('Connection error: ' + e);
-    });
-  });
-
-  peer.on('error', err => {
-    clearTimeout(joinTimeout);
-    setStatus('Failed to connect', '');
-    if (err.type === 'peer-unavailable') {
-      alert('Room "' + code + '" not found!\n\n• Check the Room ID (case-insensitive)\n• Make sure the host is still online');
-    } else if (err.type === 'network' || err.type === 'server-error') {
-      alert('Network error — check your internet connection and try again.');
-    } else {
-      alert('Error (' + err.type + '): ' + err.message);
-    }
-  });
-}
-
-function onStudentData(data) {
-  if (data.type === 'logo') {
-    const img = document.getElementById('student-logo-img');
-    img.src = data.data.dataUrl; img.style.display = 'block';
-    document.getElementById('student-ph').style.display = 'none';
-    hasBuzzed = false;
-    setBuzzReady();
-    document.getElementById('result-card').className = 'result-card';
-  }
-  if (data.type === 'reset') {
-    hasBuzzed = false;
-    setBuzzReady();
-    document.getElementById('result-card').className = 'result-card';
-  }
-  if (data.type === 'result') {
-    document.getElementById('buzz-btn').disabled = true;
-    const rank = data.rank.indexOf(myName) + 1;
-    const won  = data.winner === myName;
-    const rc = document.getElementById('result-card');
-    const content = document.getElementById('result-content');
-    if (won) {
-      content.innerHTML = `<div style="font-size:2.4rem">🥇</div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--gold)">YOU GOT IT FIRST!</div>`;
-      setStudentStatus('🏆 You buzzed first!', 'won');
-    } else if (rank > 0) {
-      content.innerHTML = `<div style="font-size:1.4rem;font-weight:900">Rank #${rank}</div>
-        <div style="color:var(--muted);font-size:0.9rem;margin-top:6px">Winner: <strong>${esc(data.winner)}</strong></div>`;
-      setStudentStatus(`You were #${rank}`, 'ok');
-    } else {
-      content.innerHTML = `<div style="color:var(--muted)">Winner: <strong>${esc(data.winner)}</strong></div>`;
-    }
-    rc.className = 'result-card show';
-  }
-}
-
-function setBuzzReady() {
-  document.getElementById('buzz-btn').disabled = false;
-  document.getElementById('buzz-status').textContent = 'Ready — buzz when you know the answer!';
-  document.getElementById('buzz-status').className = 'buzz-status';
-}
-function setStudentStatus(msg, cls='') {
-  const el = document.getElementById('buzz-status');
-  el.textContent = msg;
-  el.className = 'buzz-status' + (cls ? ' '+cls : '');
-}
-
-// ══ BUZZ ══
-function buzz() {
-  if (hasBuzzed || !myConn) return;
-  hasBuzzed = true;
-  document.getElementById('buzz-btn').disabled = true;
-  setStudentStatus('⚡ Buzzed!', 'ok');
-  myConn.send({ type:'buzz', name: myName, time: Date.now() });
-}
-
-// ══ SCREENS ══
-function showApp(role) {
-  document.getElementById('setup-screen').style.display = 'none';
-  document.getElementById('app-screen').style.display = 'block';
-  document.getElementById('host-view').style.display = role==='host' ? 'block' : 'none';
-  document.getElementById('student-view').style.display = role==='student' ? 'block' : 'none';
-}
-
-// Spacebar to buzz
-document.addEventListener('keydown', e => {
-  if (e.code==='Space' && !isHost) {
-    e.preventDefault();
-    const b = document.getElementById('buzz-btn');
-    if (!b.disabled) buzz();
-  }
-});
 </script>
+
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+<style>
+
+body{
+background:#0d0d0d;
+color:white;
+font-family:Nunito;
+text-align:center;
+padding:40px;
+}
+
+button{
+
+padding:15px 30px;
+font-size:20px;
+cursor:pointer;
+margin-top:20px;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>QUIZ BUZZER</h1>
+
+<input id="name" placeholder="Enter name">
+
+<br>
+
+<button onclick="becomeHost()">Become Host</button>
+
+<button onclick="join()">Join</button>
+
+<br><br>
+
+<button onclick="buzz()" id="buzzBtn">BUZZ</button>
+
+<h2 id="result"></h2>
+
+<script>
+
+let myName="";
+let isHost=false;
+let buzzLocked=false;
+
+function becomeHost(){
+
+myName=document.getElementById("name").value;
+
+isHost=true;
+
+listenBuzz();
+
+alert("You are host now");
+
+}
+
+
+function join(){
+
+myName=document.getElementById("name").value;
+
+alert("You joined");
+
+}
+
+
+
+function listenBuzz(){
+
+supabase
+
+.channel("buzzers")
+
+.on(
+
+"postgres_changes",
+
+{
+
+event:"INSERT",
+
+schema:"public",
+
+table:"buzzers"
+
+},
+
+(payload)=>{
+
+if(buzzLocked)return;
+
+buzzLocked=true;
+
+document.getElementById("result").innerText=
+
+payload.new.name+" buzzed first";
+
+}
+
+)
+
+.subscribe();
+
+}
+
+
+
+async function buzz(){
+
+await supabase
+
+.from("buzzers")
+
+.insert({
+
+name:myName,
+
+time:new Date()
+
+});
+
+}
+
+
+
+</script>
+
 </body>
+
 </html>
-
-
-
